@@ -136,4 +136,6 @@ source "drivers/staging/dwc2/Kconfig"
 
 source "drivers/staging/qcacld-2.0/Kconfig"
 
+source "drivers/staging/vnswap/Kconfig"
+
 endif # STAGING
