@@ -599,10 +599,8 @@ KBUILD_CFLAGS   += $(call cc-disable-warning,switch-bool,)
 KBUILD_CFLAGS   += $(call cc-disable-warning,switch,)
 KBUILD_CFLAGS   += $(call cc-disable-warning,bool-compare)
 
-
-
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
+KBUILD_CFLAGS	+= -Os
 else
 KBUILD_CFLAGS	+= -Ofast
 endif
