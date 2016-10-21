@@ -1931,6 +1931,12 @@ static int adreno_dispatch_process_cmdqueue(struct adreno_device *adreno_dev,
 	return count;
 }
 
+/**
+ * adreno_dispatcher_work() - Master work handler for the dispatcher
+ * @work: Pointer to the work struct for the current work queue
+ *
+ * Process expired commands and send new ones.
+ */
 static void adreno_dispatcher_work(struct kthread_work *work)
 {
 	struct adreno_dispatcher *dispatcher =
