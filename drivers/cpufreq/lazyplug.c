@@ -74,7 +74,7 @@
 #undef DEBUG_LAZYPLUG
 
 #define LAZYPLUG_MAJOR_VERSION	1
-#define LAZYPLUG_MINOR_VERSION	12
+#define LAZYPLUG_MINOR_VERSION	13
 
 #define DEF_SAMPLING_MS			(268)
 #define DEF_IDLE_COUNT			(19) /* 268 * 19 = 5092, almost equals to 5 seconds */
@@ -445,13 +445,15 @@ static int state_notifier_call(struct notifier_block *this,
 
 static unsigned int Lnr_run_profile_sel = 0;
 static bool Lprevious_state = false;
-void lazyplug_enter_lazy(bool enter)
+void lazyplug_enter_lazy(bool enter, bool video)
 {
 	mutex_lock(&lazymode_mutex);
 	if (enter && !Lprevious_state) {
-		pr_info("lazyplug: entering lazy mode\n");
 		Lnr_run_profile_sel = nr_run_profile_sel;
-		nr_run_profile_sel = 6; /* lazy profile */
+		// if called from vidc, use conservative profile; otherwise use lazy
+		nr_run_profile_sel = (video ? 2 : 6);
+		pr_info("lazyplug: entering lazy mode with profile %d\n",
+				nr_run_profile_sel);
 		Lprevious_state = true;
 	} else if (!enter && Lprevious_state) {
 		pr_info("lazyplug: exiting lazy mode\n");
