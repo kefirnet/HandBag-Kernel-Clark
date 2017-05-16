@@ -96,3 +96,4 @@ x509.genkey
 /copyConfig.sh
 /Makefile.back
 /defconfig
+/arch/arm64/boot/dt.img
