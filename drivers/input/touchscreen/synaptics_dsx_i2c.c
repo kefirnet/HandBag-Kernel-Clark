@@ -125,6 +125,10 @@ static int control_access_block_update_static(
 static int control_access_block_update_dynamic(
 		struct synaptics_rmi4_data *rmi4_data);
 
+static int synaptics_dsx_get_state_safe(struct synaptics_rmi4_data *rmi4_data);
+static void synaptics_dsx_set_state_safe(struct synaptics_rmi4_data *rmi4_data,
+		int state);
+
 /* F12 packet register description */
 static struct {
 	unsigned char max_x_lsb;
