@@ -122,9 +122,9 @@ int vnswap_init_backing_storage(void)
 		pr_err("%s %d: filp_open failed" \
 				"(backing_storage_file, error, " \
 				"backing_storage_filename)" \
-				" = (0x%08x, 0x%08x, %s)\n",
+				" = (0x%08lx, 0x%08x, %s)\n",
 				__func__, __LINE__,
-				(unsigned int) backing_storage_file,
+				(uintptr_t) backing_storage_file,
 				ret, vnswap_device->backing_storage_filename);
 		goto error;
 	} else {
@@ -132,9 +132,9 @@ int vnswap_init_backing_storage(void)
 		vnswap_device->stats.vnswap_backing_storage_open_fail = 0;
 		dprintk("%s %d: filp_open success" \
 				"(backing_storage_file, error, backing_storage_filename)"
-				"= (0x%08x, 0x%08x, %s)\n",
+				"= (0x%08lx, 0x%08x, %s)\n",
 				__func__, __LINE__,
-				(unsigned int) backing_storage_file,
+				(uintptr_t) backing_storage_file,
 				ret, vnswap_device->backing_storage_filename);
 	}
 
@@ -187,7 +187,7 @@ int vnswap_init_backing_storage(void)
 	if (vnswap_device->bs_size % (sizeof(unsigned long)*8) != 0) {
 		dprintk("%s %d: backing storage size is misaligned " \
 				"(32 page align)." \
-				"So, it is truncated from %llu pages to %llu pages\n",
+				"So, it is truncated from %lu pages to %lu pages\n",
 				__func__, __LINE__, vnswap_device->bs_size,
 				vnswap_device->bs_size /
 				(sizeof(unsigned long)*8)*
@@ -217,7 +217,7 @@ int vnswap_init_backing_storage(void)
 		first_block = bmap(inode, probe_block);
 		if (first_block == 0) {
 			pr_err("%s %d: backing_storage file has holes." \
-					"(probe_block, first_block) = (%llu,%llu)\n",
+					"(probe_block, first_block) = (%lu,%lu)\n",
 					__func__, __LINE__,
 					probe_block, first_block);
 			ret = -EINVAL;
@@ -258,7 +258,7 @@ int vnswap_init_backing_storage(void)
 			goto free_bmap;
 		}
 		dprintk("%s %d: blkdev_issue_discard success" \
-				"(start, size, discard_time) = (%llu, %llu, %d)\n",
+				"(start, size, discard_time) = (%lu, %lu, %d)\n",
 				__func__, __LINE__, discard_start_block,
 				discard_last_block - discard_start_block + 1,
 				discard_time);
@@ -282,7 +282,7 @@ int vnswap_init_backing_storage(void)
 			goto free_bmap;
 		}
 		dprintk("%s %d: blkdev_issue_discard success" \
-				"(start, size, discard_time) = (%llu, %llu, %d)\n",
+				"(start, size, discard_time) = (%lu, %lu, %d)\n",
 				__func__, __LINE__, discard_start_block,
 				discard_last_block - discard_start_block + 1,
 				discard_time);
@@ -780,7 +780,7 @@ void __vnswap_make_request(struct vnswap *vnswap,
 			vnswap_bio_invalid_num);
 		pr_err("%s %d: invalid offset. " \
 				"(bio->bi_sector, index, offset," \
-				"vnswap_bio_invalid_num) = (%llu, %d, %d, %d)\n",
+				"vnswap_bio_invalid_num) = (%lu, %d, %d, %d)\n",
 				__func__, __LINE__, bio->bi_sector,
 				index, offset,
 				vnswap_device->stats.
@@ -889,7 +889,7 @@ void vnswap_make_request(struct request_queue *queue, struct bio *bio)
 		pr_err("%s %d: invalid io request. " \
 				"(bio->bi_sector, bio->bi_size," \
 				"vnswap->disksize, vnswap_bio_invalid_num) = " \
-				"(%llu, %d, %llu, %d)\n",
+				"(%lu, %d, %llu, %d)\n",
 				__func__, __LINE__,
 				bio->bi_sector, bio->bi_size,
 				vnswap->disksize,
