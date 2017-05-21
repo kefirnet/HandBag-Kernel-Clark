@@ -256,16 +256,6 @@ config CPU_FREQ_GOV_INTERACTIVE
 
 	  If in doubt, say N.
 
-<<<<<<< HEAD
-=======
-config CPU_FREQ_GOV_IMPULSE
-	tristate "'impulse' cpufreq policy governor"
-	help
-	  'impulse' - This driver adds a dynamic cpufreq policy governor
-	  designed for latency-sensitive workloads.
-
-	  If in doubt, say N.
-
 config CPU_FREQ_GOV_ZZMOOVE
 	tristate "'zzmoove' cpufreq governor"
 	depends on CPU_FREQ
@@ -276,7 +266,6 @@ config CPU_FREQ_GOV_ZZMOOVE
 
 	  if in doubt, say N.
 
->>>>>>> fa3e3ae0cb28... cpufreq: add ZZMoove big.LITTLE Edition (bLE) development version as of 09.01.2016
 config CPU_FREQ_GOV_CONSERVATIVE
 	tristate "'conservative' cpufreq governor"
 	depends on CPU_FREQ
