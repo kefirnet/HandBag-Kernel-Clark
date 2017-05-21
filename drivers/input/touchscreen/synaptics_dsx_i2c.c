@@ -136,7 +136,6 @@ static void synaptics_dsx_set_state_safe(struct synaptics_rmi4_data *rmi4_data,
 
 #ifdef CONFIG_WAKE_GESTURES
 struct synaptics_rmi4_data *gl_rmi4_data;
-static struct wake_lock syn_wakelock;
 bool gestures_enabled;
 bool scr_suspended(void)
 {
@@ -4392,11 +4391,6 @@ static irqreturn_t synaptics_rmi4_irq(int irq, void *data)
 
 	synaptics_rmi4_sensor_report(rmi4_data);
 
-#ifdef CONFIG_WAKE_GESTURES
-	if (rmi4_data->keep_awake && gestures_enabled) {
-		wake_lock_timeout(&syn_wakelock, HZ/4);
-	}
-#endif
 	return IRQ_HANDLED;
 }
 
@@ -6532,7 +6526,6 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		ps_notifier_register(rmi4_data);
 
 #ifdef CONFIG_WAKE_GESTURES
-	wake_lock_init(&syn_wakelock, WAKE_LOCK_SUSPEND, "syn_wakelock");
 	gl_rmi4_data = rmi4_data;
 #endif
 
