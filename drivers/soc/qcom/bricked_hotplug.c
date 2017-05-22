@@ -34,7 +34,7 @@
 #define DEBUG 0
 
 #define MPDEC_TAG			  "bricked_hotplug"
-#define HOTPLUG_ENABLED			  1
+#define HOTPLUG_ENABLED			  0
 #define MSM_MPDEC_STARTDELAY		  100
 #define MSM_MPDEC_DELAY			  130
 #define DEFAULT_MIN_CPUS_ONLINE		  1
@@ -44,7 +44,7 @@
 #define DEFAULT_DOWN_LOCK_DUR		  500
 #define NUM_LITTLE_CORES		  4
 #define NUM_BIG_CORES			  2
-#define MSM_MPDEC_IDLE_FREQ		  384000
+#define MSM_MPDEC_IDLE_FREQ		  600000
 
 enum {
 	MSM_MPDEC_DISABLED = 0,
