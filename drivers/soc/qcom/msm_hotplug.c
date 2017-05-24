@@ -110,7 +110,7 @@
 #define MSM_HOTPLUG_VERSION             "2.4"
 
 #define MSM_HOTPLUG                     "msm_hotplug"
-#define HOTPLUG_ENABLED                 1
+#define HOTPLUG_ENABLED                 0
 #define DEFAULT_UPDATE_RATE             200
 #define START_DELAY                     20000
 #define DEFAULT_HISTORY_SIZE            10
@@ -191,7 +191,6 @@ static struct cpu_hotplug {
     .big_core_up_delay = DEFAULT_BIG_CORE_UP_DELAY
 };
 
-static struct workqueue_struct *hotplug_wq;
 static struct delayed_work hotplug_work;
 
 static bool big_core_up_ready_checked = false;
@@ -416,7 +415,7 @@ static void apply_down_lock(unsigned int cpu)
     struct down_lock *dl = &per_cpu(lock_info, cpu);
 
     dl->locked = 1;
-    queue_delayed_work_on(0, hotplug_wq, &dl->lock_rem,
+    schedule_delayed_work(&dl->lock_rem,
                   msecs_to_jiffies(hotplug.down_lock_dur));
 }
 
@@ -694,8 +693,8 @@ static void online_cpu(unsigned int target)
 
     online_little = num_online_little_cpus();
 
-    /* 
-     * Do not online more CPUs if max_cpus_online reached 
+    /*
+     * Do not online more CPUs if max_cpus_online reached
      * and cancel online task if target already achieved.
      */
     if (target <= online_little ||
@@ -712,7 +711,7 @@ static void offline_cpu(unsigned int target)
 
     online_little = num_online_little_cpus();
 
-    /* 
+    /*
      * Do not offline more CPUs if min_cpus_online reached
      * and cancel offline task if target already achieved.
      */
@@ -726,7 +725,7 @@ static void offline_cpu(unsigned int target)
 
 static void reschedule_hotplug_work(void)
 {
-    queue_delayed_work_on(0, hotplug_wq, &hotplug_work,
+    schedule_delayed_work(&hotplug_work,
                   msecs_to_jiffies(hotplug.update_rate));
 }
 
@@ -845,8 +844,8 @@ static void msm_hotplug_suspend(void)
         timeout_enabled = false;
         msm_hotplug_fingerprint_called = false;
     } else {
-        flush_workqueue(hotplug_wq);
-        cancel_delayed_work_sync(&hotplug_work);
+        flush_scheduled_work();
+        cancel_delayed_work(&hotplug_work);
     }
 
     // Suspend to max allowed little cores
@@ -937,20 +936,10 @@ static int msm_hotplug_start(int start_immediately)
     int cpu, ret = 0;
     struct down_lock *dl;
 
-    hotplug_wq =
-        alloc_workqueue("msm_hotplug_wq", WQ_HIGHPRI | WQ_FREEZABLE, 0);
-    if (!hotplug_wq) {
-        pr_err("%s: Failed to allocate hotplug workqueue\n",
-               MSM_HOTPLUG);
-        ret = -ENOMEM;
-        goto err_out;
-    }
-
     stats.load_hist = kmalloc(sizeof(stats.hist_size), GFP_KERNEL);
     if (!stats.load_hist) {
         pr_err("%s: Failed to allocate memory\n", MSM_HOTPLUG);
         ret = -ENOMEM;
-        goto err_dev;
     }
 
     mutex_init(&stats.stats_mutex);
@@ -985,17 +974,12 @@ static int msm_hotplug_start(int start_immediately)
     }
 
     if (start_immediately)
-        queue_delayed_work_on(0, hotplug_wq, &hotplug_work, 0);
+        schedule_delayed_work(&hotplug_work, 0);
     else
-        queue_delayed_work_on(0, hotplug_wq, &hotplug_work, START_DELAY);
+        schedule_delayed_work(&hotplug_work, START_DELAY);
 
     if (!msm_hotplug_scr_suspended)
         msm_hotplug_resume();
-    return ret;
-err_dev:
-    destroy_workqueue(hotplug_wq);
-err_out:
-    msm_enabled = 0;
     return ret;
 }
 
@@ -1004,20 +988,18 @@ static void msm_hotplug_stop(void)
     int cpu;
     struct down_lock *dl;
 
-    flush_workqueue(hotplug_wq);
+    flush_scheduled_work();
     for_each_possible_cpu(cpu) {
         dl = &per_cpu(lock_info, cpu);
-        cancel_delayed_work_sync(&dl->lock_rem);
+        cancel_delayed_work(&dl->lock_rem);
     }
-    cancel_delayed_work_sync(&hotplug_work);
+    cancel_delayed_work(&hotplug_work);
 
     mutex_destroy(&hotplug.msm_hotplug_mutex);
     mutex_destroy(&stats.stats_mutex);
     kfree(stats.load_hist);
 
     hotplug.notif.notifier_call = NULL;
-
-    destroy_workqueue(hotplug_wq);
 
     /* Fire up all CPUs */
     for_each_cpu_not(cpu, cpu_online_mask) {
