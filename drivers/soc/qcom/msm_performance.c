@@ -26,7 +26,6 @@
 #include <linux/kthread.h>
 
 static int touchboost = 1;
-static int corectl = 0;
 
 static struct mutex managed_cpus_lock;
 
@@ -165,29 +164,6 @@ static const struct kernel_param_ops param_ops_touchboost = {
 };
 device_param_cb(touchboost, &param_ops_touchboost, NULL, 0644);
 
-static int set_corectl(const char *buf, const struct kernel_param *kp)
-{
-	int val;
-
-	if (sscanf(buf, "%d\n", &val) != 1)
-		return -EINVAL;
-
-	corectl = val;
-
-	return 0;
-}
-
-static int get_corectl(char *buf, const struct kernel_param *kp)
-{
-	return snprintf(buf, PAGE_SIZE, "%d", corectl);
-}
-
-static const struct kernel_param_ops param_ops_corectl = {
-	.set = set_corectl,
-	.get = get_corectl,
-};
-device_param_cb(cpu_corectl, &param_ops_corectl, NULL, 0644);
-
 static int set_num_clusters(const char *buf, const struct kernel_param *kp)
 {
 	unsigned int val;
@@ -223,9 +199,6 @@ static int set_max_cpus(const char *buf, const struct kernel_param *kp)
 	unsigned int i, ntokens = 0;
 	const char *cp = buf;
 	int val;
-
-	if (corectl == 0)
-		return 0;
 
 	if (!clusters_inited)
 		return -EINVAL;
@@ -369,7 +342,6 @@ device_param_cb(managed_online_cpus, &param_ops_managed_online_cpus,
  */
 static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 {
-#if 0
 	int i, j, ntokens = 0;
 	unsigned int val, cpu;
 	const char *cp = buf;
@@ -433,7 +405,6 @@ static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 			cpumask_clear_cpu(j, limit_mask);
 	}
 	put_online_cpus();
-#endif
 
 	return 0;
 }
@@ -462,7 +433,6 @@ module_param_cb(cpu_min_freq, &param_ops_cpu_min_freq, NULL, 0644);
  */
 static int set_cpu_max_freq(const char *buf, const struct kernel_param *kp)
 {
-#if 0
 	int i, j, ntokens = 0;
 	unsigned int val, cpu;
 	const char *cp = buf;
@@ -510,7 +480,6 @@ static int set_cpu_max_freq(const char *buf, const struct kernel_param *kp)
 			cpumask_clear_cpu(j, limit_mask);
 	}
 	put_online_cpus();
-#endif
 
 	return 0;
 }
@@ -1072,9 +1041,6 @@ static int set_workload_detect(const char *buf, const struct kernel_param *kp)
 	unsigned int val, i;
 	struct cluster *i_cl;
 	unsigned long flags;
-
-	if (corectl == 0)
-		return 0;
 
 	if (!clusters_inited)
 		return -EINVAL;

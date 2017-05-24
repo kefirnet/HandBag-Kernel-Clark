@@ -18,6 +18,5 @@
 
 extern unsigned int msm_enabled;
 extern bool msm_hotplug_scr_suspended;
-extern bool msm_hotplug_fingerprint_called;
 
 #endif	/* _LINUX_MSM_HOTPLUG_H */

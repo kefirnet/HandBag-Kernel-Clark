@@ -135,18 +135,13 @@ unsigned int msm_enabled = HOTPLUG_ENABLED;
 
 struct notifier_block msm_hotplug_fb_notif;
 
-/* HACK: Prevent big cluster turned off when changing governor settings. */
-bool prevent_big_off = false;
-EXPORT_SYMBOL(prevent_big_off);
-
 static bool timeout_enabled = false;
 static s64 pre_time;
 bool msm_hotplug_scr_suspended = false;
-bool msm_hotplug_fingerprint_called = false;
 
 static void msm_hotplug_suspend(void);
 
-static unsigned int debug = 0;
+static unsigned int debug = 1;
 module_param_named(debug_mask, debug, uint, 0644);
 
 #define dprintk(msg...) \
@@ -543,30 +538,6 @@ static void big_down(void)
         lowest_cpu = get_lowest_load_cpu_big();
         if (lowest_cpu >= stats.total_cpus
                 && lowest_cpu < stats.total_cpus + stats.total_cpus_big) {
-            /* HACK: Prevent big cluster turned off when changing governor settings. */
-            if (prevent_big_off && lowest_cpu == stats.total_cpus) {
-                // Turn on first of big cores
-                if (!cpu_online(stats.total_cpus)) {
-#ifdef CONFIG_THERMAL_MONITOR
-                    // Only up a cpu if thermal control allows it !
-                    if(!msm_thermal_deny_cpu_up(stats.total_cpus)) {
-#endif
-                        cpu_up(stats.total_cpus);
-                        if (unlikely(debug_dmesg)) {
-                            pr_info("[msm_hotplug] brought up cpu%d\n", stats.total_cpus);
-                        }
-#ifdef CONFIG_THERMAL_MONITOR
-                    } else {
-                        if (unlikely(debug_dmesg)) {
-                            pr_info("[msm_hotplug] bringup of cpu%d denied by msm_thermal\n",
-                                    stats.total_cpus);
-                        }
-                    }
-#endif
-                }
-                continue;
-            }
-
             if (!cpu_online(lowest_cpu))
                 continue;
             if (check_down_lock(lowest_cpu))
@@ -741,29 +712,6 @@ static void msm_hotplug_work(struct work_struct *work)
         return;
     }
 
-    /* HACK: Prevent big cluster turned off when changing governor settings. */
-    // Turn on first of big cores
-    if (prevent_big_off) {
-        if (!cpu_online(stats.total_cpus)) {
-#ifdef CONFIG_THERMAL_MONITOR
-            // Only up a cpu if thermal control allows it !
-            if(!msm_thermal_deny_cpu_up(stats.total_cpus)) {
-#endif
-                cpu_up(stats.total_cpus);
-                if (unlikely(debug_dmesg)) {
-                    pr_info("[msm_hotplug] brought up cpu%d\n", stats.total_cpus);
-                }
-#ifdef CONFIG_THERMAL_MONITOR
-            } else {
-                if (unlikely(debug_dmesg)) {
-                    pr_info("[msm_hotplug] bringup of cpu%d denied by msm_thermal\n",
-                            stats.total_cpus);
-                }
-            }
-#endif
-        }
-    }
-
     if (timeout_enabled) {
         if (ktime_to_ms(ktime_get()) - pre_time > HOTPLUG_TIMEOUT) {
             if (msm_hotplug_scr_suspended) {
@@ -772,7 +720,6 @@ static void msm_hotplug_work(struct work_struct *work)
             }
 
             timeout_enabled = false;
-            msm_hotplug_fingerprint_called = false;
         }
         goto reschedule;
     }
@@ -842,7 +789,6 @@ static void msm_hotplug_suspend(void)
     /* Flush hotplug workqueue */
     if (timeout_enabled) {
         timeout_enabled = false;
-        msm_hotplug_fingerprint_called = false;
     } else {
         flush_scheduled_work();
         cancel_delayed_work(&hotplug_work);
@@ -1624,7 +1570,6 @@ static int msm_hotplug_fb_notifier_callback(struct notifier_block *self,
             msm_hotplug_resume();
             break;
         case FB_BLANK_POWERDOWN:
-            prevent_big_off = false;
             msm_hotplug_scr_suspended = true;
             msm_hotplug_suspend();
             break;
