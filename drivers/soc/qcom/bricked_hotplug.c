@@ -25,11 +25,7 @@
 #include <linux/platform_device.h>
 #include <linux/module.h>
 #include <linux/device.h>
-#ifdef CONFIG_POWERSUSPEND
-#include <linux/powersuspend.h>
-#else
-#include <linux/fb.h>
-#endif
+#include <linux/state_notifier.h>
 
 #define DEBUG 0
 
@@ -53,9 +49,8 @@ enum {
 	MSM_MPDEC_UP,
 };
 
-#ifndef CONFIG_POWERSUSPEND
-static struct notifier_block notif;
-#endif
+static struct notifier_block state_notifier_hook;
+
 static struct delayed_work hotplug_work;
 static struct delayed_work suspend_work;
 static struct work_struct resume_work;
@@ -337,64 +332,41 @@ static void __ref bricked_hotplug_resume(struct work_struct *work)
 	}
 }
 
-#ifdef CONFIG_POWERSUSPEND
-static void __bricked_hotplug_suspend(struct power_suspend *handler)
-{
-	INIT_DELAYED_WORK(&suspend_work, bricked_hotplug_suspend);
-	mod_delayed_work_on(0, susp_wq, &suspend_work,
-			msecs_to_jiffies(hotplug.suspend_defer_time * 1000));
-}
+static int prev_notif_state = STATE_NOTIFIER_SUSPEND;
 
-static void __ref __bricked_hotplug_resume(struct power_suspend *handler)
-{
-	flush_workqueue(susp_wq);
-	cancel_delayed_work_sync(&suspend_work);
-	queue_work_on(0, susp_wq, &resume_work);
-}
-
-static struct power_suspend bricked_hotplug_power_suspend_driver = {
-	.suspend = __bricked_hotplug_suspend,
-	.resume = __bricked_hotplug_resume,
-};
-#else
-static int prev_fb = FB_BLANK_UNBLANK;
-
-static int fb_notifier_callback(struct notifier_block *self,
+static int state_notifier_call(struct notifier_block *this,
 				unsigned long event, void *data)
 {
-	struct fb_event *evdata = data;
-	int *blank;
-
 	if (!hotplug.hotplug_suspend)
-		return NOTIFY_OK;
+		return 0;
 
-	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
-		blank = evdata->data;
-		switch (*blank) {
-			case FB_BLANK_UNBLANK:
-				if (prev_fb == FB_BLANK_POWERDOWN) {
-					/* display on */
-					flush_workqueue(susp_wq);
-					cancel_delayed_work_sync(&suspend_work);
-					queue_work_on(0, susp_wq, &resume_work);
-					prev_fb = FB_BLANK_UNBLANK;
-				}
+	switch (event) {
+		case STATE_NOTIFIER_ACTIVE:
+			if (prev_notif_state == STATE_NOTIFIER_ACTIVE)
 				break;
-			case FB_BLANK_POWERDOWN:
-				if (prev_fb == FB_BLANK_UNBLANK) {
-					/* display off */
-					INIT_DELAYED_WORK(&suspend_work, bricked_hotplug_suspend);
-					mod_delayed_work_on(0, susp_wq, &suspend_work,
-						msecs_to_jiffies(hotplug.suspend_defer_time * 1000));
-					prev_fb = FB_BLANK_POWERDOWN;
-				}
+
+			/* display on */
+			flush_workqueue(susp_wq);
+			cancel_delayed_work_sync(&suspend_work);
+			queue_work_on(0, susp_wq, &resume_work);
+			prev_notif_state = STATE_NOTIFIER_ACTIVE;
+			break;
+		case STATE_NOTIFIER_SUSPEND:
+			if (prev_notif_state == STATE_NOTIFIER_SUSPEND)
 				break;
-		}
+
+			/* display off */
+			INIT_DELAYED_WORK(&suspend_work, bricked_hotplug_suspend);
+			mod_delayed_work_on(0, susp_wq, &suspend_work,
+			msecs_to_jiffies(hotplug.suspend_defer_time * 1000));
+			prev_notif_state = STATE_NOTIFIER_SUSPEND;
+			break;
+		default:
+			break;
 	}
 
-	return NOTIFY_OK;
+	return 0;
 }
-#endif
 
 static int bricked_hotplug_start(void)
 {
@@ -407,8 +379,7 @@ static int bricked_hotplug_start(void)
 		goto err_out;
 	}
 
-	susp_wq =
-	    alloc_workqueue("susp_wq", WQ_FREEZABLE, 0);
+	susp_wq = alloc_workqueue("susp_wq", WQ_FREEZABLE, 0);
 	if (!susp_wq) {
 		pr_err("%s: Failed to allocate suspend workqueue\n",
 		       MPDEC_TAG);
@@ -416,16 +387,12 @@ static int bricked_hotplug_start(void)
 		goto err_dev;
 	}
 
-#ifdef CONFIG_POWERSUSPEND
-	register_power_suspend(&bricked_hotplug_power_suspend_driver);
-#else
-	notif.notifier_call = fb_notifier_callback;
-	if (fb_register_client(&notif)) {
-		pr_err("%s: Failed to register FB notifier callback\n",
+	state_notifier_hook.notifier_call = state_notifier_call;
+	if (state_register_client(&state_notifier_hook)) {
+		pr_err("%s: Failed to register state notify callback\n",
 			MPDEC_TAG);
 		goto err_susp;
 	}
-#endif
 
 	mutex_init(&hotplug.bricked_cpu_mutex);
 	mutex_init(&hotplug.bricked_hotplug_mutex);
@@ -444,10 +411,8 @@ static int bricked_hotplug_start(void)
 					msecs_to_jiffies(hotplug.startdelay));
 
 	return ret;
-#ifndef CONFIG_POWERSUSPEND
 err_susp:
 	destroy_workqueue(susp_wq);
-#endif
 err_dev:
 	destroy_workqueue(hotplug_wq);
 err_out:
@@ -471,12 +436,8 @@ static void bricked_hotplug_stop(void)
 	cancel_delayed_work_sync(&hotplug_work);
 	mutex_destroy(&hotplug.bricked_hotplug_mutex);
 	mutex_destroy(&hotplug.bricked_cpu_mutex);
-#ifdef CONFIG_POWERSUSPEND
-	unregister_power_suspend(&bricked_hotplug_power_suspend_driver);
-#else
-	fb_unregister_client(&notif);
-	notif.notifier_call = NULL;
-#endif
+	state_unregister_client(&state_notifier_hook);
+	state_notifier_hook.notifier_call = NULL;
 	destroy_workqueue(susp_wq);
 	destroy_workqueue(hotplug_wq);
 
