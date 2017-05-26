@@ -70,8 +70,8 @@
 #include <linux/cpufreq.h>
 #include <linux/state_notifier.h>
 
-#define DEBUG_LAZYPLUG
-//#undef DEBUG_LAZYPLUG
+//#define DEBUG_LAZYPLUG
+#undef DEBUG_LAZYPLUG
 
 #define LAZYPLUG_MAJOR_VERSION	1
 #define LAZYPLUG_MINOR_VERSION	13
