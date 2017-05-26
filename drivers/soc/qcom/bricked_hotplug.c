@@ -26,7 +26,7 @@
 #include <linux/device.h>
 #include <linux/state_notifier.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define BRICKED_TAG			"bricked_hotplug"
 #define HOTPLUG_ENABLED			0
