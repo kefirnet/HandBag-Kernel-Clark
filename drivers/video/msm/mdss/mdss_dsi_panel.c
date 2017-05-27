@@ -31,10 +31,6 @@
 #include "mdss_dropbox.h"
 #include "mdss_mdp.h"
 
-#ifdef CONFIG_POWERSUSPEND
-#include <linux/powersuspend.h>
-#endif
-
 #define MDSS_PANEL_DEFAULT_VER 0xffffffffffffffff
 #define MDSS_PANEL_UNKNOWN_NAME "unknown"
 
@@ -857,10 +853,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	lazyplug_enter_lazy(false, false);
 #endif
 
-#ifdef CONFIG_POWERSUSPEND
-	set_power_suspend_state_panel_hook(POWER_SUSPEND_INACTIVE);
-#endif
-
 	pinfo = &pdata->panel_info;
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
@@ -989,10 +981,6 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 #ifdef CONFIG_LAZYPLUG
 	lazyplug_enter_lazy(true, false);
-#endif
-
-#ifdef CONFIG_POWERSUSPEND
-	set_power_suspend_state_panel_hook(POWER_SUSPEND_ACTIVE);
 #endif
 
 end:
