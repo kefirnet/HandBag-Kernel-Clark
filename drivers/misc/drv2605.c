@@ -159,7 +159,7 @@
 
 #define MAX_TIMEOUT 15000	/* 15s */
 
-#define DEFAULT_EFFECT 14	/* Strong buzz 100% */
+#define DEFAULT_EFFECT 4	/* Sharp Click 100% */
 
 #define RTP_CLOSED_LOOP_ENABLE  /* Set closed loop mode for RTP */
 #define RTP_ERM_OVERDRIVE_CLAMP_VOLTAGE     0xF0
