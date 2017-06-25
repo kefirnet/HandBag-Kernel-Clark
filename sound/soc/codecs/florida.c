@@ -2188,6 +2188,72 @@ static irqreturn_t adsp2_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+#ifndef CONFIG_SOUND_CONTROL_HAX_3_GPL
+static
+#endif
+int florida_write(struct snd_soc_codec *codec, unsigned int reg,
+	unsigned int value)
+{
+	int ret;
+	struct regmap *regmap = codec->control_data;
+	struct florida_priv *florida_p = snd_soc_codec_get_drvdata(codec);
+
+	if (reg == SND_SOC_NOPM)
+		return 0;
+
+	if (!regmap_volatile(regmap, reg)) {
+		ret = snd_soc_cache_write(codec, reg, value);
+		if (ret != 0)
+			dev_err(codec->dev, "Cache write to %x failed: %d\n",
+				reg, ret);
+	}
+
+	if (unlikely(test_bit(BUS_DOWN, &florida_p->status_mask))) {
+		dev_err(codec->dev, "write 0x%02x while offline\n", reg);
+		return -ENODEV;
+	} else
+		return regmap_write(&regmap, reg, value);
+}
+#ifdef CONFIG_SOUND_CONTROL_HAX_3_GPL
+EXPORT_SYMBOL(florida_write);
+#endif
+
+#ifndef CONFIG_SOUND_CONTROL_HAX_3_GPL 
+static
+#endif
+unsigned int florida_read(struct snd_soc_codec *codec,
+				unsigned int reg)
+{
+	unsigned int val;
+	int ret;
+	struct regmap *regmap = codec->control_data;
+	struct florida_priv *florida_p = snd_soc_codec_get_drvdata(codec);
+
+	if (reg == SND_SOC_NOPM)
+		return 0;
+
+	if (!regmap_volatile(regmap, reg) && regmap_readable(regmap, reg) &&
+		reg < codec->driver->reg_cache_size) {
+		ret = snd_soc_cache_read(codec, reg, &val);
+		if (ret >= 0) {
+			return val;
+		} else
+			dev_err(codec->dev, "Cache read from %x failed: %d\n",
+				reg, ret);
+	}
+
+	if (unlikely(test_bit(BUS_DOWN, &florida_p->status_mask))) {
+		dev_err(codec->dev, "read 0x%02x while offline\n", reg);
+		return -ENODEV;
+	} else {
+		regmap_read(regmap, reg, &val);
+		return val;
+	}
+}
+#ifdef CONFIG_SOUND_CONTROL_HAX_3_GPL
+EXPORT_SYMBOL(florida_read);
+#endif
+
 static int florida_open(struct snd_compr_stream *stream)
 {
 	struct snd_soc_pcm_runtime *rtd = stream->private_data;
@@ -2434,11 +2500,21 @@ static int florida_get_codec_caps(struct snd_compr_stream *stream,
 	return 0;
 }
 
+#ifdef CONFIG_SOUND_CONTROL_HAX_3_GPL
+struct snd_soc_codec *fauxsound_codec_ptr;
+EXPORT_SYMBOL(fauxsound_codec_ptr);
+#endif
+
 static int florida_codec_probe(struct snd_soc_codec *codec)
 {
 	struct florida_priv *priv = snd_soc_codec_get_drvdata(codec);
 	struct arizona *arizona = priv->core.arizona;
 	int ret;
+
+#ifdef CONFIG_SOUND_CONTROL_HAX_3_GPL
+	pr_info("tomtom codec probe...\n");
+	fauxsound_codec_ptr = codec;
+#endif
 
 	codec->control_data = priv->core.arizona->regmap;
 	priv->core.arizona->dapm = &codec->dapm;
