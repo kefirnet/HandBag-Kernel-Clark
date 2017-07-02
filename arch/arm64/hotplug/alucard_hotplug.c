@@ -353,7 +353,6 @@ static void __ref __alucard_hotplug_resume(void)
 	start_rq_work();
 }
 
-static int prev_notif_state = STATE_NOTIFIER_SUSPEND;
 static int state_notifier_call(struct notifier_block *this,
 				unsigned long event, void *data)
 {
@@ -362,20 +361,12 @@ static int state_notifier_call(struct notifier_block *this,
 
 	switch (event) {
 		case STATE_NOTIFIER_ACTIVE:
-			if (prev_notif_state == STATE_NOTIFIER_ACTIVE)
-				break;
-
 			/* display on */
 			__alucard_hotplug_resume();
-			prev_notif_state = STATE_NOTIFIER_ACTIVE;
 			break;
 		case STATE_NOTIFIER_SUSPEND:
-			if (prev_notif_state == STATE_NOTIFIER_SUSPEND)
-				break;
-
 			/* display off */
 			__alucard_hotplug_suspend();
-			prev_notif_state = STATE_NOTIFIER_SUSPEND;
 			break;
 		default:
 			break;
