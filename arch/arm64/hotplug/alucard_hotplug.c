@@ -68,7 +68,7 @@ static struct hotplug_tuners {
 	.maxcoreslimit = NR_CPUS,
 	.maxcoreslimit_sleep = 1,
 	.hp_io_is_busy = 0,
-	.hotplug_suspend = 0,
+	.hotplug_suspend = 1,
 	.suspended = false,
 	.force_cpu_up = false,
 };
