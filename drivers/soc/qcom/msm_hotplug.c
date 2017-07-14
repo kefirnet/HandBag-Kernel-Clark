@@ -98,7 +98,6 @@
 #include <linux/hrtimer.h>
 #include <asm-generic/cputime.h>
 #include <linux/msm_hotplug.h>
-#include <linux/state_notifier.h>
 
 #ifdef CONFIG_THERMAL_MONITOR
 #include <linux/msm_thermal.h>
@@ -108,7 +107,7 @@
 #define LITTLE_CORES    4
 #define BIG_CORES       2
 
-#define MSM_HOTPLUG_VERSION             "2.4.1"
+#define MSM_HOTPLUG_VERSION             "2.4"
 
 #define MSM_HOTPLUG                     "msm_hotplug"
 #define HOTPLUG_ENABLED                 0
@@ -134,7 +133,7 @@
 
 unsigned int msm_enabled = HOTPLUG_ENABLED;
 
-static struct notifier_block state_notifier_hook;
+struct notifier_block msm_hotplug_fb_notif;
 
 /* HACK: Prevent big cluster turned off when changing governor settings. */
 bool prevent_big_off = false;
@@ -1625,30 +1624,36 @@ static struct platform_driver msm_hotplug_driver = {
 	},
 };
 
-static int state_notifier_call(struct notifier_block *this,
-				unsigned long event, void *data)
+static int msm_hotplug_fb_notifier_callback(struct notifier_block *self,
+                unsigned long event, void *data)
 {
-	if (!msm_enabled)
-		return 0;
+    struct fb_event *evdata = data;
+    int *blank;
 
-	switch (event) {
-		case STATE_NOTIFIER_ACTIVE:
-			msm_hotplug_scr_suspended = false;
-			msm_hotplug_resume();
-			break;
-		case STATE_NOTIFIER_SUSPEND:
-			msm_hotplug_scr_suspended = true;
-			msm_hotplug_suspend();
-			break;
-		default:
-			break;
-	}
+    if (!msm_enabled)
+        return 0;
 
-	return 0;
+    if (event == FB_EVENT_BLANK) {
+        blank = evdata->data;
+
+        switch (*blank) {
+        case FB_BLANK_UNBLANK:
+            msm_hotplug_scr_suspended = false;
+            msm_hotplug_resume();
+            break;
+        case FB_BLANK_POWERDOWN:
+            prevent_big_off = false;
+            msm_hotplug_scr_suspended = true;
+            msm_hotplug_suspend();
+            break;
+        }
+    }
+
+    return 0;
 }
 
-static struct notifier_block state_notifier_hook = {
-	.notifier_call = state_notifier_call,
+struct notifier_block msm_hotplug_fb_notif = {
+    .notifier_call = msm_hotplug_fb_notifier_callback,
 };
 
 static int __init msm_hotplug_init(void)
@@ -1661,9 +1666,9 @@ static int __init msm_hotplug_init(void)
 		return -EPERM;
 	}
 
-	ret = state_register_client(&state_notifier_hook);
+	ret = fb_register_client(&msm_hotplug_fb_notif);
 	if (ret) {
-		pr_info("%s: State Notify register failed: %d\n", MSM_HOTPLUG, ret);
+		pr_info("%s: FB register failed: %d\n", MSM_HOTPLUG, ret);
 		return ret;
 	}
 
@@ -1686,9 +1691,15 @@ static int __init msm_hotplug_init(void)
 
 static void __exit msm_hotplug_exit(void)
 {
+<<<<<<< HEAD
 	platform_device_unregister(&msm_hotplug_device);
 	platform_driver_unregister(&msm_hotplug_driver);
 	state_unregister_client(&state_notifier_hook);
+=======
+    platform_device_unregister(&msm_hotplug_device);
+    platform_driver_unregister(&msm_hotplug_driver);
+    fb_unregister_client(&msm_hotplug_fb_notif);
+>>>>>>> f6e9e8d02593... Revert "msm_hotplug: Switch to state_notifier"
 }
 
 late_initcall(msm_hotplug_init);
